@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Migration & Supabase — Zero to Confident</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0c0c10;
+    --surface: #13131a;
+    --card: #1a1a25;
+    --border: #2a2a3a;
+    --accent: #00d9a6;
+    --accent2: #7c6dfa;
+    --accent3: #f0a500;
+    --text: #e8e8f0;
+    --muted: #8888a0;
+    --highlight: #00d9a620;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .hero {
+    background: linear-gradient(135deg, #0c0c10 0%, #141428 50%, #0c1a14 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, #00d9a615 0%, transparent 70%);
+    top: -200px; right: -100px;
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, #7c6dfa10 0%, transparent 70%);
+    bottom: -150px; left: 100px;
+    pointer-events: none;
+  }
+
+  .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 900;
+    line-height: 1.1;
+    max-width: 680px;
+    margin-bottom: 20px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 540px;
+    margin-bottom: 30px;
+  }
+
+  .badge-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .badge-green { border-color: var(--accent); color: var(--accent); background: #00d9a610; }
+  .badge-purple { border-color: var(--accent2); color: var(--accent2); background: #7c6dfa10; }
+  .badge-gold { border-color: var(--accent3); color: var(--accent3); background: #f0a50010; }
+
+  /* Nav */
+  .module-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #0e0e18ee;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+
+  .nav-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 16px 20px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Main layout */
+  .main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 50px 40px;
+  }
+
+  /* Module panels */
+  .module {
+    display: none;
+    animation: fadeUp 0.3s ease;
+  }
+  .module.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Section headers */
+  .section-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 36px;
+  }
+
+  .module-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--border);
+    flex-shrink: 0;
+    margin-top: -8px;
+  }
+
+  .section-head h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .section-head p { font-size: 15px; color: var(--muted); }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+
+  .card h3 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    font-size: 17px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card h3 .icon {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .icon-green { background: #00d9a615; }
+  .icon-purple { background: #7c6dfa15; }
+  .icon-gold { background: #f0a50015; }
+  .icon-red { background: #ff637315; }
+
+  .card p, .card li { font-size: 14.5px; color: #c0c0d8; line-height: 1.75; }
+  .card ul { list-style: none; padding: 0; }
+  .card ul li { padding: 5px 0; padding-left: 20px; position: relative; }
+  .card ul li::before { content: '→'; position: absolute; left: 0; color: var(--accent); font-size: 12px; top: 6px; }
+
+  /* Analogy box */
+  .analogy {
+    background: linear-gradient(135deg, #00d9a608, #7c6dfa08);
+    border: 1px solid #00d9a625;
+    border-radius: 12px;
+    padding: 22px 28px;
+    margin-bottom: 20px;
+  }
+  .analogy-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .analogy p { font-size: 14.5px; color: #c8c8e0; font-style: italic; }
+
+  /* Code block */
+  .code-block {
+    background: #080810;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 16px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: #a0e8c8;
+    overflow-x: auto;
+    line-height: 1.8;
+  }
+  .code-block .comment { color: #4a4a70; }
+  .code-block .keyword { color: var(--accent2); }
+  .code-block .string { color: var(--accent3); }
+  .code-block .table-name { color: var(--accent); }
+
+  /* Exercise */
+  .exercise {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent3);
+    border-radius: 0 12px 12px 0;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .exercise-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent3);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .exercise h3 { font-size: 16px; font-weight: 500; margin-bottom: 10px; }
+  .exercise p, .exercise li { font-size: 14px; color: #b0b0cc; }
+
+  /* Table */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .data-table th {
+    background: #1a1a30;
+    color: var(--accent);
+    padding: 10px 14px;
+    text-align: left;
+    border: 1px solid var(--border);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .data-table td {
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    color: #a0a0c0;
+    background: var(--surface);
+  }
+  .data-table tr:hover td { background: #1a1a28; }
+
+  /* Progress / checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: #b8b8d0;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li:hover { color: var(--text); }
+  .check-box {
+    width: 20px; height: 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s;
+    margin-top: 2px;
+  }
+  .checklist li.done .check-box {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+  .checklist li.done span { text-decoration: line-through; color: var(--muted); }
+
+  /* Two col */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Comparison */
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+  .compare-row .cell {
+    background: var(--surface);
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #a8a8c0;
+  }
+  .compare-row .cell.head {
+    background: #1a1a30;
+    font-weight: 500;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .compare-row .cell.left.head { border-radius: 8px 0 0 0; }
+  .compare-row .cell.right.head { border-radius: 0 8px 0 0; }
+  .compare-row:last-child .cell.left { border-radius: 0 0 0 8px; }
+  .compare-row:last-child .cell.right { border-radius: 0 0 8px 0; }
+
+  /* Resource link */
+  .resource {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    text-decoration: none;
+    transition: border-color 0.2s;
+  }
+  .resource:hover { border-color: var(--accent); }
+  .resource-icon { font-size: 20px; }
+  .resource-text { flex: 1; }
+  .resource-title { font-size: 14px; font-weight: 500; color: var(--text); }
+  .resource-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .resource-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #00d9a615;
+    color: var(--accent);
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 32px 0;
+  }
+
+  /* Tip box */
+  .tip {
+    background: #7c6dfa08;
+    border: 1px solid #7c6dfa30;
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-size: 14px;
+    color: #b8b0f0;
+    margin: 16px 0;
+  }
+  .tip strong { color: var(--accent2); }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="label">// Zero to Confident — Self-Paced Course</div>
+  <h1>Data Migration &<br><span>Structured Databases</span></h1>
+  <p class="hero-sub">Built for business people with zero technical background who want to understand and offer structured data migration as a service.</p>
+  <div class="badge-row">
+    <span class="badge badge-green">No code required</span>
+    <span class="badge badge-purple">5 modules</span>
+    <span class="badge badge-gold">Business-first approach</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="module-nav">
+  <button class="nav-btn active" onclick="show(0)">00 · Start Here</button>
+  <button class="nav-btn" onclick="show(1)">01 · What Is Data?</button>
+  <button class="nav-btn" onclick="show(2)">02 · Databases</button>
+  <button class="nav-btn" onclick="show(3)">03 · Supabase</button>
+  <button class="nav-btn" onclick="show(4)">04 · Migration</button>
+  <button class="nav-btn" onclick="show(5)">05 · Practice</button>
+</nav>
+
+<div class="main">
+
+<!-- MODULE 0: START HERE -->
+<div class="module active" id="m0">
+  <div class="section-head">
+    <div class="module-num">00</div>
+    <div>
+      <h2>Start Here</h2>
+      <p>What this course covers, who it's for, and how to use it.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-green">👋</span> Who This Is For</h3>
+    <p>You're a business person — probably from a process improvement or operations background — and you want to understand structured data migration well enough to:</p>
+    <ul>
+      <li>Speak confidently with clients about their data problems</li>
+      <li>Diagnose messy, fragmented data situations</li>
+      <li>Understand what Supabase and Postgres actually are</li>
+      <li>Offer data tidying and migration as a service</li>
+      <li>Know enough to work alongside technical people</li>
+    </ul>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">// The Right Mindset</div>
+    <p>"You don't need to be a plumber to know a house has bad pipes. You need to recognise the problem, describe it accurately, and know how to fix it. That's what this course builds."</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-purple">📋</span> Your Progress Checklist</h3>
+    <ul class="checklist" id="progress">
+      <li onclick="tick(this)"><span class="check-box">✓</span><span>Module 00 — Read the overview and understand the goal</span></li>
+      <li onclick="tick(this)"><span class="check-box"></span><span>Module 01 — Understand what structured vs unstructured data means</span></li>
+      <li onclick="tick(this)"><span class="check-box"></span><span>Module 02 — Explain what a database is using a non-technical analogy</span></li>
+      <li onclick="tick(this)"><span class="check-box"></span><span>Module 03 — Describe what Supabase does in plain English</span></li>
+      <li onclick="tick(this)"><span class="check-box"></span><span>Module 04 — Walk through the 5 phases of a migration project</span></li>
+      <li onclick="tick(this)"><span class="check-box"></span><span>Module 05 — Complete the Customer Chaos exercise</span></li>
+    </ul>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3><span class="icon icon-gold">🎯</span> What You'll Know After</h3>
+      <ul>
+        <li>The difference between a spreadsheet and a database</li>
+        <li>What "relational data" means and why it matters</li>
+        <li>What Supabase and Postgres are</li>
+        <li>How a migration project works end to end</li>
+        <li>How to spot data problems in client businesses</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon icon-red">🚫</span> What This Isn't</h3>
+      <ul>
+        <li>A coding course</li>
+        <li>A deep technical tutorial</li>
+        <li>Only for developers</li>
+        <li>Complicated or jargon-heavy</li>
+        <li>Irrelevant if you have no tech background</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- MODULE 1: WHAT IS DATA -->
+<div class="module" id="m1">
+  <div class="section-head">
+    <div class="module-num">01</div>
+    <div>
+      <h2>What Is Data?</h2>
+      <p>Understanding the difference between structured, unstructured, and messy data — and why it matters.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-green">📊</span> Structured vs Unstructured Data</h3>
+    <p>Not all data is the same. The most important distinction for your work is this:</p>
+    <br>
+    <div class="compare-row">
+      <div class="cell head left">Structured Data</div>
+      <div class="cell head right">Unstructured Data</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Lives in rows and columns</div>
+      <div class="cell right">Lives in emails, PDFs, notes</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Can be searched, filtered, sorted</div>
+      <div class="cell right">Hard to search systematically</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Each field has a defined type</div>
+      <div class="cell right">Free-form, inconsistent</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Example: a customer database</div>
+      <div class="cell right">Example: a Word doc of notes</div>
+    </div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">// Real World Analogy</div>
+    <p>A spreadsheet is like a filing cabinet where someone has shoved everything in the same drawer with no folders. A structured database is like a filing cabinet where every document is in the right folder, labelled, dated and cross-referenced. Both hold the same information. Only one is actually useful.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-gold">⚠️</span> What Bad Data Actually Looks Like</h3>
+    <p>Most businesses you'll work with have data that looks something like this:</p>
+    <table class="data-table" style="margin-top:16px">
+      <thead>
+        <tr><th>Name</th><th>Phone</th><th>Email</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Jon Smith</td><td>07888 123456</td><td>jon@gmail.com</td><td>likes blue ones - VIP?</td></tr>
+        <tr><td>Jonathan Smith</td><td>+44 7888 123456</td><td></td><td>called Tuesday re order</td></tr>
+        <tr><td>J. Smith</td><td>7888123456</td><td>jon@gmail.com</td><td>14 Apr 2024 - invoice sent</td></tr>
+        <tr><td>Dave (landlord)</td><td>see WhatsApp</td><td>N/A</td><td>also manages the warehouse</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:12px">Three rows are the same person. Phone numbers are in four different formats. Notes contain orders, invoices, and relationship info all mixed together. A machine — or AI — cannot work with this.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-purple">🔍</span> Why This Matters for AI</h3>
+    <p>Every business is trying to add AI tools right now. The problem is: AI needs clean, structured data to function properly. When you feed it the table above, it can't help you find all VIP customers, or generate a real invoice report, or detect lapsed clients. The mess defeats the intelligence. <strong style="color:var(--accent)">Cleaning data is the necessary first step</strong> — and that's the service you're building toward offering.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="exercise-label">// Exercise 1.1</div>
+    <h3>Spot the Mess</h3>
+    <p>Open any spreadsheet you currently use — personal or professional. List every column that has inconsistent formats, missing values, or mixed information crammed into one cell. You'll likely find at least five problems in under five minutes. That's your diagnostic skill starting to form.</p>
+  </div>
+</div>
+
+<!-- MODULE 2: DATABASES -->
+<div class="module" id="m2">
+  <div class="section-head">
+    <div class="module-num">02</div>
+    <div>
+      <h2>Databases</h2>
+      <p>What databases are, how relational data works, and what SQL does — without writing any code.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-green">🗂️</span> What Is a Database?</h3>
+    <p>A database is a system for storing, organising, and retrieving data reliably. Unlike a spreadsheet, it's designed to handle thousands (or millions) of records, multiple users at once, and complex relationships between different types of information.</p>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">// The Hotel Analogy</div>
+    <p>Imagine a hotel. It has Guests (with names, contact details, preferences), Rooms (with numbers, types, prices), Bookings (connecting a guest to a room on specific dates), and Invoices (connecting a booking to a payment). Each of these is a separate table. They're connected by shared identifiers. You can instantly ask: "Show me all bookings for suite rooms by guests who've stayed more than three times." A spreadsheet cannot do this. A relational database does it instantly.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-purple">🔗</span> What "Relational" Means</h3>
+    <p>A relational database stores data in <strong style="color:var(--text)">multiple tables</strong> that are <strong style="color:var(--text)">connected to each other</strong>. Each table has rows (records) and columns (fields). Tables connect via shared IDs.</p>
+    <br>
+    <div class="compare-row">
+      <div class="cell head left">customers table</div>
+      <div class="cell head right">orders table</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">id: 1<br>name: Jon Smith<br>email: jon@gmail.com</div>
+      <div class="cell right">id: 101<br>customer_id: 1 ←<br>amount: £450<br>date: 2024-04-14</div>
+    </div>
+    <br>
+    <p>The <span style="color:var(--accent);font-family:monospace">customer_id: 1</span> in the orders table points to <span style="color:var(--accent);font-family:monospace">id: 1</span> in the customers table. That link is the relationship. Now you can ask: "Show all orders from Jon Smith" — without copying his name into the orders table 50 times.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-gold">🗣️</span> What Is SQL?</h3>
+    <p>SQL (Structured Query Language) is the language used to talk to databases. You don't need to write it yourself to do this work — but reading it helps. Here's what it looks like in plain English:</p>
+    <div class="code-block">
+<span class="comment">-- "Show me all customers who haven't ordered in 6 months"</span>
+<span class="keyword">SELECT</span> name, email <span class="keyword">FROM</span> <span class="table-name">customers</span>
+<span class="keyword">WHERE</span> last_order_date &lt; <span class="string">'2024-01-01'</span>
+<span class="keyword">ORDER BY</span> last_order_date;
+
+<span class="comment">-- "How much has each customer spent in total?"</span>
+<span class="keyword">SELECT</span> customer_id, <span class="keyword">SUM</span>(amount) <span class="keyword">AS</span> total_spent
+<span class="keyword">FROM</span> <span class="table-name">orders</span>
+<span class="keyword">GROUP BY</span> customer_id;
+    </div>
+    <p>Even without writing this yourself, you can see that SQL reads almost like English. You can describe these queries to a developer (or an AI) and they'll write the code. Your job is to know what questions to ask.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-red">📝</span> Key Terms to Know</h3>
+    <ul>
+      <li><strong style="color:var(--text)">Table</strong> — like a spreadsheet tab, holds one type of record (customers, orders, etc.)</li>
+      <li><strong style="color:var(--text)">Row / Record</strong> — one single entry in a table (one customer, one order)</li>
+      <li><strong style="color:var(--text)">Column / Field</strong> — one piece of information (name, email, date)</li>
+      <li><strong style="color:var(--text)">Primary Key</strong> — a unique ID for each row, so nothing gets confused</li>
+      <li><strong style="color:var(--text)">Foreign Key</strong> — a column that links to another table's primary key</li>
+      <li><strong style="color:var(--text)">Schema</strong> — the overall design/structure of your tables and how they connect</li>
+      <li><strong style="color:var(--text)">Query</strong> — a question you ask the database (using SQL)</li>
+      <li><strong style="color:var(--text)">Index</strong> — makes searches faster, like an index in a book</li>
+    </ul>
+  </div>
+
+  <div class="exercise">
+    <div class="exercise-label">// Exercise 2.1</div>
+    <h3>Design on Paper</h3>
+    <p>Pick a real business you know (a recruitment firm, property company, events business). On paper, draw three boxes labelled with the main types of records they track. Draw lines between boxes where the records are related. Write 4–5 column names in each box. You've just designed a basic database schema — no code needed.</p>
+  </div>
+</div>
+
+<!-- MODULE 3: SUPABASE -->
+<div class="module" id="m3">
+  <div class="section-head">
+    <div class="module-num">03</div>
+    <div>
+      <h2>Supabase & Postgres</h2>
+      <p>What these tools are, how they relate, and why businesses use them.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-green">⚙️</span> Postgres — The Engine</h3>
+    <p>PostgreSQL (called "Postgres") is one of the world's most trusted databases. It's open-source, free, and used by companies ranging from small startups to major banks. It's been around since 1996 and is extremely reliable.</p>
+    <br>
+    <p>Think of Postgres as the engine inside a car. It's what actually stores, organises, and retrieves your data. Powerful — but it doesn't come with a dashboard, seats, or steering wheel by default.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-purple">🚀</span> Supabase — The Platform</h3>
+    <p>Supabase is a platform built on top of Postgres. It adds the dashboard, seats, and steering wheel. It gives developers everything they need to build an app quickly:</p>
+    <ul>
+      <li>A hosted Postgres database (no server setup)</li>
+      <li>Built-in user login and authentication</li>
+      <li>Auto-generated APIs when you create tables</li>
+      <li>Real-time features (live dashboards, notifications)</li>
+      <li>File storage (photos, PDFs, documents)</li>
+      <li>A visual table editor (looks a bit like Airtable)</li>
+    </ul>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">// Client-Friendly Explanation</div>
+    <p>"Supabase is the platform. Postgres is the engine underneath. Together they give you a proper, reliable database system that's searchable, scalable, and AI-ready — without having to build everything from scratch or pay enterprise prices."</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-gold">🔄</span> Why Companies Are Moving to Supabase</h3>
+    <div class="compare-row" style="margin-top:12px">
+      <div class="cell head left">Moving FROM</div>
+      <div class="cell head right">Moving TO</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Excel / Google Sheets chaos</div>
+      <div class="cell right">Structured, searchable database</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Firebase (Google's database tool)</div>
+      <div class="cell right">Supabase (open-source, SQL-based)</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Airtable (limited at scale)</div>
+      <div class="cell right">Real Postgres database</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Old CRM / Access database</div>
+      <div class="cell right">Modern, maintainable stack</div>
+    </div>
+    <div class="compare-row">
+      <div class="cell left">Multiple disconnected tools</div>
+      <div class="cell right">Single source of truth</div>
+    </div>
+  </div>
+
+  <div class="tip">
+    <strong>Key point for client conversations:</strong> Because Supabase uses real Postgres, the client's data is never trapped. If they outgrow Supabase one day, they keep Postgres. Their data is portable. That's a big deal for businesses worried about vendor lock-in.
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-red">🛠️</span> Tools That Work Alongside Supabase</h3>
+    <ul>
+      <li><strong style="color:var(--text)">n8n / Zapier / Make</strong> — Automation tools to connect Supabase with other systems</li>
+      <li><strong style="color:var(--text)">Next.js / React</strong> — Frontend frameworks developers use to build the app interface</li>
+      <li><strong style="color:var(--text)">Retool / Appsmith</strong> — No-code dashboards that connect to Supabase for internal tools</li>
+      <li><strong style="color:var(--text)">OpenAI / Claude</strong> — AI tools that query Supabase data to answer questions or take actions</li>
+      <li><strong style="color:var(--text)">Stripe</strong> — Payments that connect to Supabase for subscriptions and invoicing</li>
+    </ul>
+  </div>
+</div>
+
+<!-- MODULE 4: MIGRATION -->
+<div class="module" id="m4">
+  <div class="section-head">
+    <div class="module-num">04</div>
+    <div>
+      <h2>Data Migration</h2>
+      <p>What migration actually involves — from discovery to go-live — as a structured five-phase process.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-green">📌</span> What "Migration" Actually Means</h3>
+    <p>Data migration is the process of moving data from one system to another — usually from something messy and fragmented (spreadsheets, old CRMs, Access databases) into something structured and modern (Postgres, Supabase, a proper database). It's not just copying data. It's cleaning, restructuring, validating, and verifying it along the way.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-purple">📐</span> Phase 1 — Discovery & Audit</h3>
+    <p>Before touching any data, you need to understand what exists. This is your most natural skill — it's essentially a process audit applied to data.</p>
+    <ul>
+      <li>Where does data currently live? (spreadsheets, emails, WhatsApp, paper?)</li>
+      <li>Who owns and maintains it?</li>
+      <li>What decisions does the business make using this data?</li>
+      <li>What reports do they currently run (or wish they could run)?</li>
+      <li>What are the biggest pain points with data right now?</li>
+    </ul>
+    <div class="tip" style="margin-top:14px">
+      <strong>Your advantage:</strong> Business process consultants are trained to ask exactly these questions. You already know how to run this phase.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-gold">🗺️</span> Phase 2 — Schema Design</h3>
+    <p>Based on discovery, you design the new structure. What tables do you need? What columns? How do they connect? This is the architectural phase — no data moves yet.</p>
+    <ul>
+      <li>Define the main entities (customers, properties, jobs, invoices...)</li>
+      <li>List the fields each entity needs</li>
+      <li>Define the relationships between tables</li>
+      <li>Decide on data types (text, number, date, yes/no)</li>
+      <li>Think about what reports you'll need to run</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-red">🧹</span> Phase 3 — Data Cleaning</h3>
+    <p>This is often the most time-consuming phase. Before data can move, it must be cleaned:</p>
+    <ul>
+      <li>Standardise phone numbers (all to one format)</li>
+      <li>Standardise dates (all to YYYY-MM-DD)</li>
+      <li>Identify and merge duplicate records</li>
+      <li>Fill or flag missing critical fields</li>
+      <li>Split multi-value cells into proper separate records</li>
+      <li>Remove test data, junk rows, blank entries</li>
+    </ul>
+    <div class="code-block" style="margin-top:14px">
+<span class="comment">// Before cleaning — phone number column:</span>
+07888 123456
++44 7888 123456  
+7888123456
+07888-123-456
+<span class="comment">// After cleaning — all standardised:</span>
+<span class="string">+447888123456</span>
+<span class="string">+447888123456</span>
+<span class="string">+447888123456</span>
+<span class="string">+447888123456</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-purple">📦</span> Phase 4 — Import & Validate</h3>
+    <p>The cleaned data is imported into the new database. Then it's validated — meaning you check that everything arrived correctly:</p>
+    <ul>
+      <li>Do the record counts match?</li>
+      <li>Are all relationships intact?</li>
+      <li>Can you run the key queries the business needs?</li>
+      <li>Is anything missing or corrupted?</li>
+      <li>Test with real business scenarios ("find all lapsed customers")</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-green">✅</span> Phase 5 — Handover & Documentation</h3>
+    <p>The migration is only complete when the client can actually use the system:</p>
+    <ul>
+      <li>Simple documentation of the schema (what each table and column means)</li>
+      <li>Training the client or their team on retrieval and reporting</li>
+      <li>Setting up regular backup and maintenance processes</li>
+      <li>Archiving the original messy files (don't delete — just retire them)</li>
+      <li>Defining who maintains the data going forward</li>
+    </ul>
+  </div>
+
+  <div class="exercise">
+    <div class="exercise-label">// Exercise 4.1 — Map a Migration</div>
+    <h3>Think Through a Real Client</h3>
+    <p>Think of a business you know personally or have worked with. Walk through all five phases in your head for them:</p>
+    <ul style="margin-top:10px">
+      <li>What would you find in Phase 1?</li>
+      <li>What tables would you design in Phase 2?</li>
+      <li>What cleaning problems would you expect in Phase 3?</li>
+      <li>What validation queries would matter in Phase 4?</li>
+      <li>Who would need training in Phase 5?</li>
+    </ul>
+    <p style="margin-top:10px">Write it out on paper. This is the skill at the core of what you're building.</p>
+  </div>
+</div>
+
+<!-- MODULE 5: PRACTICE -->
+<div class="module" id="m5">
+  <div class="section-head">
+    <div class="module-num">05</div>
+    <div>
+      <h2>Practice Exercises</h2>
+      <p>Hands-on exercises to build the core migration muscle — no coding required.</p>
+    </div>
+  </div>
+
+  <div class="exercise">
+    <div class="exercise-label">// Exercise A — Beginner</div>
+    <h3>The Chaos Customer Spreadsheet</h3>
+    <p style="margin-bottom:12px">Create a deliberately messy spreadsheet with 20–30 rows of fake customer data. Include: duplicate names in different formats, phone numbers in 4 different styles, missing emails, notes crammed with multiple types of information, inconsistent date formats, and blank rows.</p>
+    <p><strong style="color:var(--accent3)">Then:</strong> Design a clean 3-table structure (Customers, Orders, Notes). List what cleaning steps you'd need. Rewrite 5 rows into the clean format on paper.</p>
+    <p style="margin-top:10px"><strong style="color:var(--muted)">Tools needed:</strong> Just Excel or Google Sheets.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="exercise-label">// Exercise B — Intermediate</div>
+    <h3>The Property Management Company</h3>
+    <p style="margin-bottom:12px">Imagine a property management firm tracking landlords, properties, tenants, maintenance jobs and invoices across WhatsApp, spreadsheets and PDFs.</p>
+    <p><strong style="color:var(--accent3)">Design:</strong> A full schema with at least 5 connected tables. For each table, write the column names. Draw the connections between tables. Then write 3 questions the business would want to ask ("Show all properties with outstanding maintenance jobs over 30 days old").</p>
+    <p style="margin-top:10px"><strong style="color:var(--muted)">Tools needed:</strong> Paper and pen, or draw.io (free).</p>
+  </div>
+
+  <div class="exercise">
+    <div class="exercise-label">// Exercise C — Applied</div>
+    <h3>The Supabase Table Editor</h3>
+    <p style="margin-bottom:12px">Go to <strong style="color:var(--accent)">supabase.com</strong> and create a free account. Create a new project. In the Table Editor (it looks like a spreadsheet), create a Customers table with columns: id, name, email, phone, created_at.</p>
+    <p><strong style="color:var(--accent3)">Then:</strong> Add 5 fake rows manually. Go to the SQL Editor and type: <span style="font-family:monospace;color:var(--accent)">SELECT * FROM customers;</span> — and see your data come back. You've just run your first database query.</p>
+    <p style="margin-top:10px"><strong style="color:var(--muted)">Tools needed:</strong> Free Supabase account (no credit card).</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="card">
+    <h3><span class="icon icon-green">📚</span> Recommended Free Resources</h3>
+
+    <a class="resource" href="https://supabase.com/docs" target="_blank">
+      <span class="resource-icon">📖</span>
+      <div class="resource-text">
+        <div class="resource-title">Supabase Docs — Getting Started</div>
+        <div class="resource-desc">supabase.com/docs — Official documentation, very readable</div>
+      </div>
+      <span class="resource-tag">Free</span>
+    </a>
+
+    <a class="resource" href="https://sqlzoo.net" target="_blank">
+      <span class="resource-icon">🧩</span>
+      <div class="resource-text">
+        <div class="resource-title">SQLZoo</div>
+        <div class="resource-desc">Interactive SQL exercises in your browser — no setup needed</div>
+      </div>
+      <span class="resource-tag">Free</span>
+    </a>
+
+    <a class="resource" href="https://www.kaggle.com/learn/intro-to-sql" target="_blank">
+      <span class="resource-icon">📊</span>
+      <div class="resource-text">
+        <div class="resource-title">Kaggle — Intro to SQL</div>
+        <div class="resource-desc">Short, practical SQL course with real datasets</div>
+      </div>
+      <span class="resource-tag">Free</span>
+    </a>
+
+    <a class="resource" href="https://drawsql.app" target="_blank">
+      <span class="resource-icon">🗺️</span>
+      <div class="resource-text">
+        <div class="resource-title">DrawSQL</div>
+        <div class="resource-desc">Visual database schema designer — great for planning migrations</div>
+      </div>
+      <span class="resource-tag">Free tier</span>
+    </a>
+
+    <a class="resource" href="https://airtable.com" target="_blank">
+      <span class="resource-icon">📋</span>
+      <div class="resource-text">
+        <div class="resource-title">Airtable (free tier)</div>
+        <div class="resource-desc">A visual database tool — good practice before using Supabase directly</div>
+      </div>
+      <span class="resource-tag">Free tier</span>
+    </a>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon icon-purple">🗺️</span> Suggested Learning Order</h3>
+    <ul>
+      <li><strong style="color:var(--text)">Week 1</strong> — Complete this course. Do Exercise A. Read Supabase "What is Supabase?" page.</li>
+      <li><strong style="color:var(--text)">Week 2</strong> — Do Exercise B (property schema design). Try SQLZoo tutorial 1.</li>
+      <li><strong style="color:var(--text)">Week 3</strong> — Create a free Supabase project. Do Exercise C. Explore the table editor.</li>
+      <li><strong style="color:var(--text)">Week 4</strong> — Import a real messy CSV into Supabase. See what breaks. Fix it.</li>
+      <li><strong style="color:var(--text)">Month 2</strong> — Offer a free discovery session to a real small business. Run Phase 1 for real.</li>
+    </ul>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<div class="footer">
+  // Data Migration & Supabase — Zero to Confident &nbsp;·&nbsp; Built for Jonathan &nbsp;·&nbsp; claude.ai
+</div>
+
+<script>
+  function show(index) {
+    document.querySelectorAll('.module').forEach((m, i) => {
+      m.classList.toggle('active', i === index);
+    });
+    document.querySelectorAll('.nav-btn').forEach((b, i) => {
+      b.classList.toggle('active', i === index);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function tick(el) {
+    el.classList.toggle('done');
+  }
+</script>
+</body>
+</html>
